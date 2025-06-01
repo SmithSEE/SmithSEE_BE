@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/ocr")
 public class OcrController
@@ -28,48 +29,44 @@ public class OcrController
     @PostMapping
     public ResponseEntity<Map<String, Object>> analyzeImages(@RequestParam("file") MultipartFile[] files)
     {
-        List<SmishingResponse> results = new ArrayList<>();
+        List<String> ocrLogs = new ArrayList<>();
         StringBuilder finalTextBuilder = new StringBuilder();
 
         for (MultipartFile file : files)
         {
-            try
-            {
+            try {
                 String text = ocrService.extractTextFromImage(file);
                 text = text.replaceAll("\\r?\\n", "");
                 String url = ocrService.extractFirstUrl(text);
-                if (url != null)
-                {
+                if (url != null) {
                     text = text.replace(url, "[URL]");
                 }
 
-                // 각 이미지 처리 로그
-                System.out.println("처리 중 파일: " + file.getOriginalFilename());
-                System.out.println("OCR 원문: " + text);
-                System.out.println("추출된 URL: " + url);
-                System.out.println("URL 치환 결과: " + text);
-                System.out.println("────────────────────────────");
+                // 로그 누적
+                ocrLogs.add("파일: " + file.getOriginalFilename());
+                ocrLogs.add("OCR 결과: " + text);
+                ocrLogs.add("URL: " + url);
+                ocrLogs.add("────────────");
 
                 finalTextBuilder.append(text).append(" ");
-
-                SmishingRequest request = new SmishingRequest(text, url);
-                SmishingResponse response = smishingService.analyze(request);
-                results.add(response);
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
-        // 최종 통합 문장 출력
         String finalText = finalTextBuilder.toString().trim();
         System.out.println("최종 통합 텍스트: " + finalText);
 
-        // JSON 응답 구성
+        // AI 요청은 여기서 딱 1번만
+        String firstUrl = ocrService.extractFirstUrl(finalText);
+        SmishingRequest request = new SmishingRequest(finalText, firstUrl);
+        SmishingResponse smishingResult = smishingService.analyze(request);
+
         Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("results", results);
+        responseMap.put("result", smishingResult);
         responseMap.put("combinedText", finalText);
+        responseMap.put("log", ocrLogs);
 
         return ResponseEntity.ok(responseMap);
     }
