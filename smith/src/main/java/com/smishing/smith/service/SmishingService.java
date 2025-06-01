@@ -6,9 +6,6 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
-import java.util.HashMap;
-
 @Service
 public class SmishingService
 {
@@ -16,57 +13,8 @@ public class SmishingService
 	
 	public SmishingResponse analyze(SmishingRequest request)
 	{
-	    String aiUrl = "";
-
-	    HttpHeaders headers = new HttpHeaders();
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	    headers.setBearerAuth(""); // 반드시 설정 필요
-
-	    // Hugging Face API가 요구하는 형식으로 변환
-	    Map<String, String> input = new HashMap<>();
-	    input.put("inputs", request.getText());
-
-	    HttpEntity<Map<String, String>> httpEntity = new HttpEntity<>(input, headers);
-
-	    try {
-	        ResponseEntity<String> response = restTemplate.exchange(
-	            aiUrl,
-	            HttpMethod.POST,
-	            httpEntity,
-	            String.class
-	        );
-
-	        // 응답 단순 파싱: LABEL_1이 스미싱, LABEL_0이 정상
-	        String body = response.getBody();
-	        boolean isSmishing = body != null && body.contains("LABEL_1");
-
-	        double riskScore = 0.0;
-	        if (body != null) {
-	            int scoreIndex = body.indexOf("score");
-	            if (scoreIndex != -1) {
-	                String snippet = body.substring(scoreIndex);
-	                String value = snippet.replaceAll("[^0-9\\.]", ""); // 숫자만 추출
-	                try {
-	                    riskScore = Double.parseDouble(value);
-	                } catch (NumberFormatException ignored) {}
-	            }
-	        }
-
-	        return new SmishingResponse(
-	            isSmishing,
-	            riskScore
-	        );
-
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        return new SmishingResponse(false, 0.0);
-	    }
-	}
-
-	/*
-	public SmishingResponse analyze(SmishingRequest request)
-	{
-		String aiUrl = "https://api-inference.huggingface.co/models/sseul2/bert-smishing-model";
+		/*
+		String aiUrl = "";
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -82,11 +30,11 @@ public class SmishingService
 				);
 		
 		return response.getBody();
-		
+		*/
 		return new SmishingResponse(
 		        true,
-		        0.88
+		        0.88,
+		        "임시 응답: URL 포함 + 금융 키워드 감지"
 		    );
 	}
-	*/
 }
