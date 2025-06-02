@@ -1,3 +1,4 @@
+/*
 package com.smishing.smith.service;
 
 import org.springframework.core.io.ByteArrayResource;
@@ -65,3 +66,4 @@ public class RemoteOcrService {
         return null;
     }
 }
+*/
