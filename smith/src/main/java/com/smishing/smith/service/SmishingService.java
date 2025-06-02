@@ -13,10 +13,10 @@ import java.util.HashMap;
 public class SmishingService
 {
 	private final RestTemplate restTemplate = new RestTemplate();
-	
+
 	public SmishingResponse analyze(SmishingRequest request)
 	{
-	    String aiUrl = "";
+	    String aiUrl = "http://localhost:8001/predict";
 
 	    HttpHeaders headers = new HttpHeaders();
 	    headers.setContentType(MediaType.APPLICATION_JSON);
@@ -24,7 +24,7 @@ public class SmishingService
 
 	    // Hugging Face API가 요구하는 형식으로 변환
 	    Map<String, String> input = new HashMap<>();
-	    input.put("inputs", request.getText());
+	    input.put("text", request.getText());
 
 	    HttpEntity<Map<String, String>> httpEntity = new HttpEntity<>(input, headers);
 
@@ -38,19 +38,22 @@ public class SmishingService
 
 	        // 응답 단순 파싱: LABEL_1이 스미싱, LABEL_0이 정상
 	        String body = response.getBody();
+			System.out.println("FastAPI 응답 본문: " + body);
 	        boolean isSmishing = body != null && body.contains("LABEL_1");
 
-	        double riskScore = 0.0;
-	        if (body != null) {
-	            int scoreIndex = body.indexOf("score");
-	            if (scoreIndex != -1) {
-	                String snippet = body.substring(scoreIndex);
-	                String value = snippet.replaceAll("[^0-9\\.]", ""); // 숫자만 추출
-	                try {
-	                    riskScore = Double.parseDouble(value);
-	                } catch (NumberFormatException ignored) {}
-	            }
-	        }
+			double riskScore = 0.0;
+			if (body != null) {
+				int scoreIndex = body.indexOf("riskScore");
+				if (scoreIndex != -1) {
+					String snippet = body.substring(scoreIndex);
+					String value = snippet.replaceAll("[^0-9\\.]", ""); // 숫자만 추출
+					try {
+						riskScore = Double.parseDouble(value) * 100;
+					} catch (NumberFormatException ignored) {}
+				}
+			}
+
+			System.out.println("최종 판단 결과: smishing=" + isSmishing + ", score=" + riskScore);
 
 	        return new SmishingResponse(
 	            isSmishing,
@@ -67,12 +70,12 @@ public class SmishingService
 	public SmishingResponse analyze(SmishingRequest request)
 	{
 		String aiUrl = "https://api-inference.huggingface.co/models/sseul2/bert-smishing-model";
-		
+
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		
+
 		HttpEntity<SmishingRequest> httpEntity = new HttpEntity<SmishingRequest>(request, headers);
-		
+
 		ResponseEntity<SmishingResponse> response =
 				restTemplate.exchange(
 					aiUrl,
@@ -80,9 +83,9 @@ public class SmishingService
 					httpEntity,
 					SmishingResponse.class
 				);
-		
+
 		return response.getBody();
-		
+
 		return new SmishingResponse(
 		        true,
 		        0.88

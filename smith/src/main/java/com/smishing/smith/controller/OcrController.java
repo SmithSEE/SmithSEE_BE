@@ -2,25 +2,25 @@ package com.smishing.smith.controller;
 
 import com.smishing.smith.dto.SmishingRequest;
 import com.smishing.smith.dto.SmishingResponse;
-import com.smishing.smith.service.OcrService;
+import com.smishing.smith.service.RemoteOcrService;
 import com.smishing.smith.service.SmishingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.List;
-import java.util.ArrayList;
+
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/ocr")
 public class OcrController
 {
-    private final OcrService ocrService;
+    private final RemoteOcrService ocrService;
     private final SmishingService smishingService;
 
-    public OcrController(OcrService ocrService, SmishingService smishingService)
+    public OcrController(RemoteOcrService ocrService, SmishingService smishingService)
     {
         this.ocrService = ocrService;
         this.smishingService = smishingService;
@@ -29,43 +29,26 @@ public class OcrController
     @PostMapping
     public ResponseEntity<Map<String, Object>> analyzeImages(@RequestParam("file") MultipartFile[] files)
     {
-        List<String> ocrLogs = new ArrayList<>();
-        StringBuilder finalTextBuilder = new StringBuilder();
+        // 1. 원격 OCR 서버에 파일 배열 전달
+        Map<String, Object> ocrResult = ocrService.analyzeRemotely(files);
 
-        for (MultipartFile file : files)
-        {
-            try {
-                String text = ocrService.extractTextFromImage(file);
-                text = text.replaceAll("\\r?\\n", "");
-                String url = ocrService.extractFirstUrl(text);
-                if (url != null) {
-                    text = text.replace(url, "[URL]");
-                }
+        // 2. combinedText와 log 추출
+        String combinedText = (String) ocrResult.get("combinedText");
+        List<String> ocrLogs = (List<String>) ocrResult.get("log");
+        
+        System.out.println("텍스트 본문:" + combinedText);
 
-                // 로그 누적
-                ocrLogs.add("파일: " + file.getOriginalFilename());
-                ocrLogs.add("OCR 결과: " + text);
-                ocrLogs.add("URL: " + url);
-                ocrLogs.add("────────────");
+        // 3. URL 추출
+        String firstUrl = ocrService.extractFirstUrl(combinedText);
 
-                finalTextBuilder.append(text).append(" ");
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        String finalText = finalTextBuilder.toString().trim();
-        System.out.println("최종 통합 텍스트: " + finalText);
-
-        // AI 요청은 여기서 딱 1번만
-        String firstUrl = ocrService.extractFirstUrl(finalText);
-        SmishingRequest request = new SmishingRequest(finalText, firstUrl);
+        // 4. AI 분석 요청
+        SmishingRequest request = new SmishingRequest(combinedText, firstUrl);
         SmishingResponse smishingResult = smishingService.analyze(request);
 
+        // 5. 최종 응답 구성
         Map<String, Object> responseMap = new HashMap<>();
         responseMap.put("result", smishingResult);
-        responseMap.put("combinedText", finalText);
+        responseMap.put("combinedText", combinedText);
         responseMap.put("log", ocrLogs);
 
         return ResponseEntity.ok(responseMap);
