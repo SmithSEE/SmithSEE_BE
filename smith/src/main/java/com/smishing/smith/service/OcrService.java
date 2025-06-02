@@ -12,6 +12,9 @@ import java.util.Collections;
 @Service
 public class OcrService
 {
+	// 로컬 환경변수를 통해 ocr을 호출하는 코드
+	// 서버 호출로 변경하였으므로 필요 없음
+	/*
     public String extractTextFromImage(MultipartFile file) throws IOException
     {
         ByteString imgBytes = ByteString.copyFrom(file.getBytes());
@@ -37,15 +40,7 @@ public class OcrService
             return res.getFullTextAnnotation().getText();
         }
     }
+    */
 
-    public String extractFirstUrl(String text)
-    {
-        Pattern pattern = Pattern.compile("(http|https)://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+");
-        Matcher matcher = pattern.matcher(text);
-        if (matcher.find())
-        {
-            return matcher.group();
-        }
-        return null;
-    }
+    
 }
